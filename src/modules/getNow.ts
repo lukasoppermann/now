@@ -1,59 +1,80 @@
-const comparedToMe = (myDate: string, theirDate: string) => {
-  console.log(myDate, theirDate)
-  const local = new Date(myDate)
-  const theirs = new Date(theirDate)
+import { Moment } from 'moment-timezone';
+
+const moment = require('moment-timezone')
+export interface Now {
+  location: string;
+  country: string;
+  iso: string;
+  timezone: string;
+  time: string;
+  time12: string;
+  offset: string;
+  comparedToMe: string;
+  population?: number
+}
+
+export interface Location {
+  city: string,
+  country: string,
+  iso: string,
+  timezone: string,
+  population?: number
+}
+
+const comparedToMe = (myNow: Moment, theirNow: Moment) => {
   // you are ahead
-  if (local > theirs) return 'yesterday'
+  if (myNow.isBefore(theirNow.format('YYYY-MM-DD'), 'days')) return 'tomorrow'
   // they are ahead
-  if (local < theirs) return 'tomorrow'
+  if (myNow.isAfter(theirNow.format('YYYY-MM-DD'), 'days')) return 'yesterday'
   // same day
   return 'today'
 }
 
-// const offsetToMe = (myTime, theirTime)
+const formatDiff = (diff: number): string => {
+  const hours =  (diff - diff % 60) / 60
+  const minutes = diff % 60
 
-export const getNow = (now: Date, timezone: string) => {
-  
-  // // current date
-  // // adjust 0 before single digit date
-  // let date = ("0" + date_ob.getDate()).slice(-2);
+  if (minutes === 0) return `${hours}`
+  return `${hours}:${minutes}`
+} 
 
-  // // current month
-  // let month = ("0" + (date_ob.getMonth() + 1)).slice(-2);
 
-  // // current year
-  // let year = date_ob.getFullYear();
+const offsetToMe = (myNow: Moment, theirNow: Moment): string => {
+  const myOffset = myNow.utcOffset()
+  const theirOffset = theirNow.utcOffset()
 
-  // // current hours
-  // let hours = date_ob.getHours();
+  if (Math.sign(myOffset) === Math.sign(theirOffset)) {
+    const diff = Math.abs(myOffset - theirOffset)
+    // same time zone
+    if (diff === 0) return ""
+    // ealier than you
+    if (Math.abs(theirOffset) < Math.abs(myOffset)) return `(-${formatDiff(diff)}) `
+    // later than you
+    return `(+${formatDiff(diff)}) `
 
-  // // current minutes
-  // let minutes = date_ob.getMinutes();
+  } else {
+    const diff = Math.abs(myOffset) + Math.abs(theirOffset)
+    return  `(${(""+Math.sign(theirOffset)).slice(0,-1)}${formatDiff(diff)}) `
+  }
+}
 
-  // // current seconds
-  // let seconds = date_ob.getSeconds();
+export const getNow = (now: Date, location: Location): Now => {
+  // setup format
+  const myNow = moment(now)
+  const theirNow = myNow.clone().tz(location.timezone)
+  console.log(location.timezone, theirNow.format())
+  // @ts-ignore
+  // const theirDate = new Date(Date.UTC(theirParts.year, theirParts.month-1, theirParts.day, theirParts.hour, theirParts.minute, theirParts.second))
 
-  let options = {
-    timeZone: timezone,
-    year: 'numeric',
-    month: 'numeric',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: 'numeric',
-  } as Intl.DateTimeFormatOptions
-  
-  let formatter = new Intl.DateTimeFormat([], options)
-
-  const theirParts = Object.fromEntries(formatter.formatToParts(now).map(part => [part.type, part.value]))
-  // prints date & time in YYYY-MM-DD HH:MM:SS format
-  console.log(timezone)
-  console.log(theirParts)
-  console.log(now, `${now.getFullYear()}-${now.getMonth()}-${now.getDay()}`)
-  // return formatter.formatToParts(now)
   return {
-    time: `${theirParts.hour}:${theirParts.minute}`,
-    offset: 'not implemented',
-    comparedToMe: comparedToMe(`${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()}`,`${theirParts.year}-${theirParts.month}-${theirParts.day}`)
+    location: location.city,
+    country: location.country,
+    iso: location.iso,
+    timezone: location.timezone,
+    time: theirNow.format('HH:mm'),
+    time12: theirNow.format('hh:mm a'),
+    offset: offsetToMe(myNow, theirNow),
+    comparedToMe: comparedToMe(myNow, theirNow),
+    population: location.population
   }
 }

@@ -1,7 +1,7 @@
 {
   "$schema": "https://www.raycast.com/schemas/extension.json",
-  "name": "tell-me-the-time",
-  "title": "Tell me the time",
+  "name": "now",
+  "title": "Now",
   "description": "Show current or specific time in predefined locations",
   "icon": "command-icon.png",
   "author": "lukasoppermann",
@@ -17,48 +17,24 @@
       "mode": "view",
       "preferences": [
         {
-          "name": "link",
-          "type": "textfield",
+          "name": "hourFormat",
+          "type": "checkbox",
           "required": false,
-          "title": "Link",
-          "description": "Link",
-          "placeholder": "Link",
-          "default": "https://duckduckgo.com/?q={Query}"
-        },
-        {
-          "name": "openWithRequired",
-          "type": "appPicker",
-          "required": false,
-          "title": "Open with (required)",
-          "description": "Open with",
-          "default": "Firefox"
-        },
-        {
-          "name": "openWithOptional",
-          "type": "appPicker",
-          "required": false,
-          "title": "Open with (optional)",
-          "description": "Open with",
-          "default": "Safari"
-        },
-        {
-          "name": "ignoreValueProperty",
-          "type": "appPicker",
-          "required": false,
-          "title": "Open with (optional, ignore `value`)",
-          "description": "`value` property should not be fetched from the manifest file",
-          "default": "Safari",
-          "value": {
-            "name": "Firefox",
-            "bundleId": "org.mozilla.firefox",
-            "path": "/Applications/Firefox.app"
-          }
+          "title": "24-hour notation",
+          "label": "24-hour notation",
+          "description": "Show time in 24-hour notation",
+          "default": true
         }
       ]
     }
   ],
   "dependencies": {
     "@raycast/api": "^1.37.1",
+    "city-timezones": "^1.2.0",
+    "country-emoji": "^1.5.6",
+    "country-flag-icons": "^1.5.5",
+    "fuse.js": "^6.6.2",
+    "moment-timezone": "^0.5.34",
     "worldcities": "^0.1.7"
   },
   "devDependencies": {
