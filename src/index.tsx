@@ -1,10 +1,19 @@
-import { Action, ActionPanel, getPreferenceValues, List, showToast, Toast } from "@raycast/api";
+import { Action, ActionPanel, getPreferenceValues, Icon, List, showToast, Toast } from "@raycast/api";
 import Fuse from 'fuse.js';
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getFavorites } from './modules/getFavorites';
-import { getNow, Location, Now } from './modules/getNow';
+import { addToFavorites, getFavorites, isFavorite, moveFavorite, removeFromFavorites } from './modules/favorites';
+import { getNow, Now } from './modules/getNow';
 
 const {flag} = require('country-emoji');
+
+export interface Location {
+  city: string,
+  country: string,
+  iso: string,
+  timezone: string
+}
+
+type FavoriteActions = 'remove' | 'add' | 'up' | 'down'
 
 const options = {
   includeScore: true,
@@ -21,9 +30,7 @@ const options = {
       name: 'province',
       weight: 0.5
     }
-  ],
-  sortFn: (a: any, b: any) =>
-    a.score === b.score ? (a.item.population < b.item.population ? -1 : 1) : a.score < b.score ? -1 : 1
+  ]
 }
 
 const cityTimezones = require('city-timezones')
@@ -35,20 +42,54 @@ const fuse = new Fuse(cityMapping, options)
 export default function Command() {
   const { hourFormat } = getPreferenceValues()
   const [results, isLoading, search] = useSearch()
+  const [favorites, setFavorites] = useState<Now[]>([])
+
+  useEffect(() => {
+    getFavorites().then(storedFavorites => {
+      setFavorites(storedFavorites)
+    })
+    
+  }, []);
   
+  const updateFavorites = async (item: Now, action: FavoriteActions) => {
+    let newFav: Now[] = []
+    if(action === 'remove') {
+      newFav = await removeFromFavorites(item)
+    }
+    if(action === 'add') {
+      newFav = await addToFavorites(item)
+    }
+    if(action === 'up' || action === 'down') {
+      newFav = await moveFavorite(item, action)
+    }
+    // set favorites
+    return setFavorites(newFav)
+  }
+  
+
   return (
     <List isLoading={isLoading} onSearchTextChange={search} searchBarPlaceholder="Now in ..." throttle>
-      <List.Item title={new Date().toLocaleString()}/>
       {!isLoading && results.length === 0
         ? <List.Section title="Favorites">
-            {getFavorites().map((item) => (
-              <ListItem key={item.location} item={item} is24={hourFormat} />
+            {favorites.map((item) => (
+              <ListItem 
+                key={item.city} 
+                item={item} 
+                is24={hourFormat} 
+                isFav={isFavorite(item, favorites)} 
+                updateFavorites={updateFavorites}
+              />
             ))}
           </List.Section>
         : <List.Section title="Results" subtitle={results.length + ""}>
           {results.map((item, key) => (
-            <ListItem key={key} item={item} is24={hourFormat} />
-            // <ListItem key={searchResult.name} searchResult={searchResult} />
+            <ListItem 
+              key={key}
+              item={item}
+              is24={hourFormat}
+              isFav={isFavorite(item, favorites)}
+              updateFavorites={updateFavorites} 
+            />
           ))}
           </List.Section>
       }
@@ -57,16 +98,30 @@ export default function Command() {
 }
 
 // @ts-ignore
-function ListItem({ item, is24 }: { item: Now, is24: Boolean }) {
+function ListItem({ item, is24, isFav, updateFavorites }: { item: Now, is24: Boolean, isFav: Boolean, updateFavorites: Function }) {
+  
   return (
       <List.Item
         icon={flag(item.iso)}
-        title={{ tooltip: item.country, value: item.location }}
+        title={{ tooltip: item.country, value: item.city }}
         subtitle={is24 ? item.time : item.time12}
         accessories={[{ text: `${item.offset}${item.comparedToMe}` }]}
         actions={
           <ActionPanel>
-            <Action.CopyToClipboard content={item.time} />
+            <ActionPanel.Section>
+              <Action.CopyToClipboard content={is24 ? item.time : item.time12} />
+              { isFav 
+                ? <Action icon={Icon.Star} title="Remove from favorites" onAction={ () => updateFavorites(item, 'remove') } />
+                : <Action icon={Icon.Star} title="Add to favorites" onAction={ () => updateFavorites(item, 'add') } />
+              }
+            </ActionPanel.Section>
+            { isFav ? 
+              <ActionPanel.Section>
+                <Action icon={Icon.ChevronUp} title="Move up in favorites" onAction={ () => updateFavorites(item, 'up') } shortcut={{ modifiers: ["cmd", "opt"], key: "arrowUp" }} />
+                <Action icon={Icon.ChevronDown} title="Move down in favorites" onAction={ () => updateFavorites(item, 'down') } shortcut={{ modifiers: ["cmd", "opt"], key: "arrowDown" }} />
+              </ActionPanel.Section>
+              : ""
+            }
           </ActionPanel>
         }
       />
@@ -123,12 +178,8 @@ async function performSearch(searchText: string, signal: AbortSignal): Promise<N
       iso: item.iso2,
       // @ts-ignore
       timezone: item.timezone,
-      // @ts-ignore
-      population: item.pop
     } as Location))
-    // @ts-ignore
-    console.log(result)
-    
+    //    
     return result
   }
   return []

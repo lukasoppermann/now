@@ -1,8 +1,9 @@
 import { Moment } from 'moment-timezone';
+import { Location } from '..';
 
 const moment = require('moment-timezone')
 export interface Now {
-  location: string;
+  city: string;
   country: string;
   iso: string;
   timezone: string;
@@ -10,15 +11,6 @@ export interface Now {
   time12: string;
   offset: string;
   comparedToMe: string;
-  population?: number
-}
-
-export interface Location {
-  city: string,
-  country: string,
-  iso: string,
-  timezone: string,
-  population?: number
 }
 
 const comparedToMe = (myNow: Moment, theirNow: Moment) => {
@@ -62,19 +54,17 @@ export const getNow = (now: Date, location: Location): Now => {
   // setup format
   const myNow = moment(now)
   const theirNow = myNow.clone().tz(location.timezone)
-  console.log(location.timezone, theirNow.format())
   // @ts-ignore
   // const theirDate = new Date(Date.UTC(theirParts.year, theirParts.month-1, theirParts.day, theirParts.hour, theirParts.minute, theirParts.second))
 
   return {
-    location: location.city,
+    city: location.city,
     country: location.country,
     iso: location.iso,
     timezone: location.timezone,
     time: theirNow.format('HH:mm'),
     time12: theirNow.format('hh:mm a'),
     offset: offsetToMe(myNow, theirNow),
-    comparedToMe: comparedToMe(myNow, theirNow),
-    population: location.population
+    comparedToMe: comparedToMe(myNow, theirNow)
   }
 }
