@@ -16,10 +16,8 @@ const setStored = async (items: Location[]): Promise<void> => {
   LocalStorage.setItem('favorites', JSON.stringify(items))
 }
 
-export const getFavorites = async (): Promise<Now[]> => {
-  const currentDateObj = new Date()
-
-  return (await getStored()).map((item: Location) => getNow(currentDateObj, item))
+export const getFavorites = async (time?: string): Promise<Now[]> => {
+  return (await getStored()).map((item: Location) => getNow(time || new Date(), item))
 }
 
 export const isFavorite = (item: Now, favorites: Now[]): boolean => {

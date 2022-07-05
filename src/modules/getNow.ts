@@ -50,8 +50,13 @@ const offsetToMe = (myNow: Moment, theirNow: Moment): string => {
   }
 }
 
-export const getNow = (now: Date, location: Location): Now => {
+export const getNow = (now: string | Date, location: Location): Now => {
   // setup format
+  if (typeof now === 'string') {
+    now = `${moment().format('YYYY-MM-DD')}T${moment(now, ["h:mm A", "h:mmA", "HH:mm", "h A", "hA"]).format("HH:mm")}`
+    console.log(`Internal: ${now}`)
+  }
+  
   const myNow = moment(now)
   const theirNow = myNow.clone().tz(location.timezone)
   // @ts-ignore

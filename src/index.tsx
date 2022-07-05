@@ -3,6 +3,7 @@ import Fuse from 'fuse.js';
 import { useCallback, useEffect, useRef, useState } from "react";
 import { addToFavorites, getFavorites, isFavorite, moveFavorite, removeFromFavorites } from './modules/favorites';
 import { getNow, Now } from './modules/getNow';
+import { parseInput } from './modules/parseInput';
 
 const {flag} = require('country-emoji');
 
@@ -41,14 +42,13 @@ const fuse = new Fuse(cityMapping, options)
 
 export default function Command() {
   const { hourFormat } = getPreferenceValues()
-  const [results, isLoading, search] = useSearch()
   const [favorites, setFavorites] = useState<Now[]>([])
+  const [results, isLoading, search] = useSearch(setFavorites)
 
   useEffect(() => {
     getFavorites().then(storedFavorites => {
       setFavorites(storedFavorites)
     })
-    
   }, []);
   
   const updateFavorites = async (item: Now, action: FavoriteActions) => {
@@ -128,7 +128,7 @@ function ListItem({ item, is24, isFav, updateFavorites }: { item: Now, is24: Boo
   )
 }
 
-function useSearch() {
+function useSearch(setFavorites: Function) {
   const [isLoading, setIsLoading] = useState(true);
   const [results, setResults] = useState<Now[]>([]);
   const cancelRef = useRef<AbortController | null>(null);
@@ -139,7 +139,7 @@ function useSearch() {
       cancelRef.current = new AbortController()
       setIsLoading(true)
       try {
-        const results = await performSearch(searchText, cancelRef.current.signal);
+        const results = await performSearch(searchText, setFavorites);
         setResults(results);
       } catch (error) {
         console.error("search error", error);
@@ -156,7 +156,7 @@ function useSearch() {
   );
 
   useEffect(() => {
-    search("");
+    search("")
     return () => {
       cancelRef.current?.abort();
     };
@@ -165,11 +165,22 @@ function useSearch() {
   return [results, isLoading, search] as const;
 }
  
-async function performSearch(searchText: string, signal: AbortSignal): Promise<Now[] | []> {
+async function performSearch(searchText: string, setFavorites: Function): Promise<Now[] | []> {
   // start search with 2 or mor characters
   if (searchText.length > 2) {
+    const {location, time: searchTime} = parseInput(searchText)
+    
     const now = new Date()
-    const result = fuse.search(searchText, { limit: 10 }).map(( { item } ) => getNow(now, {
+    const time = searchTime || now
+
+    if(!location && typeof time === 'string') {
+      getFavorites(time).then(storedFavorites => {
+        setFavorites(storedFavorites)
+      })
+    }
+
+    // @ts-ignore
+    const result = fuse.search(location, { limit: 10 }).map(( { item } ) => getNow(time, {
       // @ts-ignore
       city: item.city,
       // @ts-ignore
